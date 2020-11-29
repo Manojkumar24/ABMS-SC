@@ -12,6 +12,7 @@ globals
   num-days-completed
   intersections      ;; agentset containing the patches that are intersections
   roads              ;; agentset containing the patches that are roads
+  store-profit
 ]
 
 retailers-own [
@@ -102,6 +103,7 @@ to setup-globals
   set acceleration 0.099
   set is-day true
   set num-days-completed -1
+  set store-profit 0
 end
 
 
@@ -534,6 +536,7 @@ to plot-profits
         set-current-plot "My Store Profit"
         create-temporary-plot-pen "default"
         set-plot-pen-color black
+        set store-profit ((sold-stock - (purchased-stock * wholesale-cost)) / (purchased-stock * wholesale-cost + 1)) * 100
         plotxy num-days-completed ((sold-stock - (purchased-stock * wholesale-cost)) / (purchased-stock * wholesale-cost + 1)) * 100
       ]
       ask houses [ set max-people avg-people-shopping ]
@@ -1349,6 +1352,38 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="test" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="511000"/>
+    <metric>store-profit</metric>
+    <enumeratedValueSet variable="spawn-prob">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="store-max-occupancy">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="city-speed-limit">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="wholesale-cost">
+      <value value="0.65"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="avg-people-shopping">
+      <value value="15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="highway-speed-limit">
+      <value value="0.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-stock">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ticks-per-cycle">
+      <value value="45"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
