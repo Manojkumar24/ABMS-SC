@@ -73,6 +73,15 @@ houses-own [
 
 ;;;;;;;;;;; Setup Procedures ;;;;;;;;;;
 
+to-report get-profit
+  ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
+    report store-profit
+  ]
+  [
+    report 0
+  ]
+end
+
 to setup
   clear-all-plots
   ask consumers [die]
@@ -302,6 +311,42 @@ to go-trucks
   ]
 end
 
+to-report is-highway?
+  ifelse any? neighbors with [pcolor = 109][
+    report true
+  ][
+    report false
+  ]
+end
+
+to assign-target-store [available-store]
+  let min-distance-highway-store 1000000
+  let min-distance-city-store 1000000
+  let target-highway-store "none"
+  let target-city-store "none"
+
+
+  ask available-store [
+    let store-distance distance myself
+    if store-distance < min-distance-highway-store and is-highway?[
+      set min-distance-highway-store store-distance
+      set target-highway-store self
+    ]
+
+    if store-distance < min-distance-city-store and not is-highway?[
+      set min-distance-city-store store-distance
+      set target-city-store self
+    ]
+  ]
+
+  ifelse min-distance-highway-store < choose-city-road-threshold [
+    set go-to-store target-highway-store
+  ]
+  [
+    set go-to-store target-city-store
+  ]
+
+end
 
 to reached-store
   ifelse length [waiting-list] of go-to-store + length [shoppers-list] of go-to-store < [max-occupancy] of go-to-store and [stock] of go-to-store > 0
@@ -318,7 +363,8 @@ to reached-store
     let available-store retailers in-radius 100
     let remove-store go-to-store
     set available-store available-store with [ self != remove-store ]
-    set go-to-store one-of available-store
+    assign-target-store available-store
+    ;set go-to-store one-of available-store
     set goal go-to-store
   ]
 end
@@ -859,7 +905,7 @@ wholesale-cost
 wholesale-cost
 0
 1
-0.65
+0.71
 0.01
 1
 NIL
@@ -942,7 +988,7 @@ initial-stock
 initial-stock
 1
 500
-500.0
+492.0
 1
 1
 NIL
@@ -957,7 +1003,7 @@ store-max-occupancy
 store-max-occupancy
 1
 100
-25.0
+28.0
 1
 1
 NIL
@@ -987,6 +1033,21 @@ My store setup\n
 11
 0.0
 1
+
+SLIDER
+455
+195
+652
+228
+choose-city-road-threshold
+choose-city-road-threshold
+1
+50
+20.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
