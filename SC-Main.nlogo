@@ -145,7 +145,15 @@ to setup-retailers
     set stock random-normal 1000 100
     set purchased-stock stock
     set sold-stock 0
-    set max-inventory random-normal 6000 500
+    set max-inventory random-normal 4000 500
+
+    if max-inventory < stock [
+      print "Warning, the stock is greater than the max-inventory limit"
+      while [max-inventory < stock] [
+        set stock random-normal 1000 100
+      ]
+    ]
+
     set waiting-list []
     set shoppers-list []
     set max-occupancy random-normal 25 5
@@ -236,12 +244,20 @@ to go-distributors
 end
 
 
+to-report stock-depleted?
+  report stock < 0.4 * max-inventory
+end
+
+to-report required-stock
+  report 0.9 * max-inventory - stock
+end
+
 to go-retailers
   ask retailers [
-    if not ordered? and stock < 100 [                          ;; order when stock is below a threshold
+    if not ordered? and stock-depleted?  [                          ;; order when stock is below a threshold
       let my-distributor one-of distributors in-radius 100
       let store-value self
-      let stock-ordered 700
+      let stock-ordered required-stock
       hatch-trucks 1 [
         set xcor [pxcor] of my-distributor
         set ycor [pycor] of my-distributor
@@ -339,11 +355,17 @@ to assign-target-store [available-store]
     ]
   ]
 
-  ifelse min-distance-highway-store < choose-city-road-threshold [
+  ifelse min-distance-highway-store < min-distance-city-store [
     set go-to-store target-highway-store
   ]
+
   [
-    set go-to-store target-city-store
+    ifelse min-distance-highway-store - min-distance-city-store <= choose-city-road-threshold [
+      set go-to-store target-highway-store
+    ]
+    [
+      set go-to-store target-city-store
+    ]
   ]
 
 end
