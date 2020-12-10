@@ -13,6 +13,7 @@ globals
   intersections      ;; agentset containing the patches that are intersections
   roads              ;; agentset containing the patches that are roads
   store-profit
+  total-store-profit
 ]
 
 retailers-own [
@@ -26,6 +27,8 @@ retailers-own [
   max-occupancy
   ordered?           ;; true if ordered from a distributor or false if isn't
   num-consumers      ;; count of consumers at any time
+  has-parking-space?
+  parking-list
 ]
 
 consumers-own
@@ -41,6 +44,7 @@ consumers-own
   temp-prev-patch
   stock-needed       ;; qty to purchase
   at-store?          ;; true if inside any store
+  parking-wait-time
 ]
 
 trucks-own
@@ -73,15 +77,6 @@ houses-own [
 
 ;;;;;;;;;;; Setup Procedures ;;;;;;;;;;
 
-to-report get-profit
-  ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
-    report store-profit
-  ]
-  [
-    report 0
-  ]
-end
-
 to setup
   clear-all-plots
   ask consumers [die]
@@ -113,6 +108,7 @@ to setup-globals
   set is-day true
   set num-days-completed -1
   set store-profit 0
+  set total-store-profit 0
 end
 
 
@@ -145,26 +141,24 @@ to setup-retailers
     set stock random-normal 1000 100
     set purchased-stock stock
     set sold-stock 0
-    set max-inventory random-normal 4000 500
-
-    if max-inventory < stock [
-      print "Warning, the stock is greater than the max-inventory limit"
-      while [max-inventory < stock] [
-        set stock random-normal 1000 100
-      ]
-    ]
-
+    set max-inventory random-normal 6000 500
     set waiting-list []
     set shoppers-list []
-    set max-occupancy random-normal 25 5
+    set parking-list []
+    set max-occupancy random-normal 10 5
     set ordered? false
     set num-consumers 0
+    ifelse random 1 < parking-space-prob
+    [set has-parking-space? true]
+    [set has-parking-space? false]
+
   ]
 
   ask retailers with [ my-store = true ] [
     set stock initial-stock
     set purchased-stock initial-stock
     set max-occupancy store-max-occupancy
+    set has-parking-space? has-parking?
   ]
 end
 
@@ -207,6 +201,8 @@ to go
   go-trucks
 
   label-subject         ;; if we're watching a car, have it display its goal
+  ;if ticks = 105000 [stop]
+  if num-days-completed = 30 [stop]
   tick
 end
 
@@ -244,20 +240,12 @@ to go-distributors
 end
 
 
-to-report stock-depleted?
-  report stock < 0.4 * max-inventory
-end
-
-to-report required-stock
-  report 0.9 * max-inventory - stock
-end
-
 to go-retailers
   ask retailers [
-    if not ordered? and stock-depleted?  [                          ;; order when stock is below a threshold
+    if not ordered? and stock < 100 [                          ;; order when stock is below a threshold
       let my-distributor one-of distributors in-radius 100
       let store-value self
-      let stock-ordered required-stock
+      let stock-ordered 700
       hatch-trucks 1 [
         set xcor [pxcor] of my-distributor
         set ycor [pycor] of my-distributor
@@ -327,52 +315,7 @@ to go-trucks
   ]
 end
 
-to-report is-highway?
-  ifelse any? neighbors with [pcolor = 109][
-    report true
-  ][
-    report false
-  ]
-end
-
-to assign-target-store [available-store]
-  let min-distance-highway-store 1000000
-  let min-distance-city-store 1000000
-  let target-highway-store "none"
-  let target-city-store "none"
-
-
-  ask available-store [
-    let store-distance distance myself
-    if store-distance < min-distance-highway-store and is-highway?[
-      set min-distance-highway-store store-distance
-      set target-highway-store self
-    ]
-
-    if store-distance < min-distance-city-store and not is-highway?[
-      set min-distance-city-store store-distance
-      set target-city-store self
-    ]
-  ]
-
-  ifelse min-distance-highway-store < min-distance-city-store [
-    set go-to-store target-highway-store
-  ]
-
-  [
-    ifelse min-distance-highway-store - min-distance-city-store <= choose-city-road-threshold [
-      set go-to-store target-highway-store
-    ]
-    [
-      set go-to-store target-city-store
-    ]
-  ]
-
-end
-
-to reached-store
-  ifelse length [waiting-list] of go-to-store + length [shoppers-list] of go-to-store < [max-occupancy] of go-to-store and [stock] of go-to-store > 0
-  [
+to enter-store
     set xcor [xcor] of go-to-store
     set ycor [ycor] of go-to-store
     let current self
@@ -381,14 +324,55 @@ to reached-store
     ]
     set at-store? true
     set goal my-home
-  ][
-    let available-store retailers in-radius 100
+end
+
+to wait-in-parking-lot
+  let currx xcor
+  let curry ycor
+  set xcor [xcor] of go-to-store
+  set ycor [ycor] of go-to-store
+  set at-store? true
+  let current self
+
+  ask go-to-store [
+
+    if not member? current parking-list [
+      ;show "putting in parking list"
+      set parking-list lput current parking-list
+      ;show parking-list
+      ;show "put"
+    ]
+
+  ]
+
+
+end
+
+to go-to-another-store
+  let available-store retailers in-radius 100
     let remove-store go-to-store
     set available-store available-store with [ self != remove-store ]
-    assign-target-store available-store
-    ;set go-to-store one-of available-store
+    set go-to-store one-of available-store
     set goal go-to-store
+end
+
+to reached-store
+
+  ifelse [stock] of go-to-store > 0
+  [
+    ifelse length [waiting-list] of go-to-store + length [shoppers-list] of go-to-store < [max-occupancy] of go-to-store
+    [
+      enter-store]
+    [
+
+      ifelse [has-parking-space?] of go-to-store [
+        wait-in-parking-lot]
+      [go-to-another-store]
+    ]
   ]
+  [
+    go-to-another-store]
+
 end
 
 
@@ -411,10 +395,14 @@ to spawn-consumer[house-xcor house-ycor]
       set go-to-store one-of retailers in-radius 100
       set goal go-to-store
       set-speed
+      set parking-wait-time 0
     ]
   ]
 end
 
+to-report my-total-profit
+  report total-store-profit
+end
 
 to shopping
   let agent first shoppers-list
@@ -425,6 +413,7 @@ to shopping
       set sold-stock sold-stock + [stock-needed] of agent
       ask agent [
         set stock-needed 0
+        set parking-wait-time 0
       ]
     ][
       let current-stock stock
@@ -435,14 +424,54 @@ to shopping
         set available-store available-store with [ self != remove-store ]
         set go-to-store one-of available-store
         set goal go-to-store
+        set parking-wait-time 0
       ]
       set sold-stock sold-stock + stock
       set stock 0
     ]
   ]
+set shoppers-list but-first shoppers-list
+
+ ;increment waiting time for all customers in the parking-list
+  if not empty? parking-list
+  [
+
+      if stock > 0 [
+      let x first parking-list
+      if x != nobody
+      [
+
+        set shoppers-list lput x shoppers-list
+        set parking-list but-first parking-list
+
+      ]
+  ]
+
+  foreach parking-list [
+      x -> if x != nobody[
+      ask x [
+
+          set parking-wait-time parking-wait-time + 1
+          if parking-wait-time > max-parking-wait-time [
+            set parking-wait-time 0
+            let current self
+            ask go-to-store [
+            set parking-list remove current parking-list
+              set waiting-list lput x waiting-list
+            ]
+            go-to-another-store
+
+          ]
+
+      ]
+      ]
+
+  ]
+  ]
+
   set num-consumers num-consumers + 1
   set waiting-list lput agent waiting-list
-  set shoppers-list but-first shoppers-list
+
 end
 
 
@@ -589,6 +618,9 @@ to plot-profits
     ifelse is-day
     [
       set is-day false
+      ask retailers [
+        set parking-list []
+      ]
       set num-days-completed num-days-completed + 1
       ask retailers with [my-store = true]
       [
@@ -605,6 +637,7 @@ to plot-profits
         create-temporary-plot-pen "default"
         set-plot-pen-color black
         set store-profit ((sold-stock - (purchased-stock * wholesale-cost)) / (purchased-stock * wholesale-cost + 1)) * 100
+        set total-store-profit total-store-profit + store-profit
         plotxy num-days-completed ((sold-stock - (purchased-stock * wholesale-cost)) / (purchased-stock * wholesale-cost + 1)) * 100
       ]
       ask houses [ set max-people avg-people-shopping ]
@@ -612,6 +645,8 @@ to plot-profits
     ][
       set is-day true
     ]
+
+    ;if num-days-completed = 30 [stop]
   ]
 end
 
@@ -681,10 +716,10 @@ to import-layout
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-745
-60
-1194
-510
+740
+20
+1189
+470
 -1
 -1
 11.92
@@ -841,9 +876,9 @@ NIL
 1
 
 MONITOR
-680
+620
 60
-737
+677
 105
 houses
 count houses
@@ -852,9 +887,9 @@ count houses
 11
 
 MONITOR
-625
+545
 60
-682
+602
 105
 retailers
 count retailers
@@ -863,9 +898,9 @@ count retailers
 11
 
 MONITOR
-555
+455
 60
-627
+527
 105
 distributors
 count distributors
@@ -927,7 +962,7 @@ wholesale-cost
 wholesale-cost
 0
 1
-0.71
+0.65
 0.01
 1
 NIL
@@ -959,7 +994,7 @@ avg-people-shopping
 avg-people-shopping
 0
 100
-15.0
+100.0
 1
 1
 NIL
@@ -1010,7 +1045,7 @@ initial-stock
 initial-stock
 1
 500
-492.0
+500.0
 1
 1
 NIL
@@ -1025,7 +1060,7 @@ store-max-occupancy
 store-max-occupancy
 1
 100
-28.0
+9.0
 1
 1
 NIL
@@ -1040,7 +1075,7 @@ highway-speed-limit
 highway-speed-limit
 0.1
 1
-0.8
+1.0
 0.1
 1
 NIL
@@ -1056,17 +1091,54 @@ My store setup\n
 0.0
 1
 
+SWITCH
+515
+170
+637
+203
+has-parking?
+has-parking?
+1
+1
+-1000
+
 SLIDER
-455
-195
-652
-228
-choose-city-road-threshold
-choose-city-road-threshold
+260
+600
+432
+633
+max-parking-wait-time
+max-parking-wait-time
+0
+30
+23.0
 1
-50
-20.0
 1
+NIL
+HORIZONTAL
+
+MONITOR
+580
+565
+682
+610
+NIL
+total-store-profit
+17
+1
+11
+
+SLIDER
+470
+225
+642
+258
+parking-space-prob
+parking-space-prob
+0
+1
+0.2
+0.1
 1
 NIL
 HORIZONTAL
@@ -1464,6 +1536,16 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="ticks-per-cycle">
       <value value="45"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="parking-space" repetitions="5" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="100000"/>
+    <metric>my-total-profit</metric>
+    <enumeratedValueSet variable="has-parking?">
+      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
