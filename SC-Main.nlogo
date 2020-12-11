@@ -77,6 +77,15 @@ houses-own [
 
 ;;;;;;;;;;; Setup Procedures ;;;;;;;;;;
 
+to-report get-profit
+  ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
+    report store-profit
+  ]
+  [
+    report 0
+  ]
+end
+
 to setup
   clear-all-plots
   ask consumers [die]
@@ -141,14 +150,26 @@ to setup-retailers
     set stock random-normal 1000 100
     set purchased-stock stock
     set sold-stock 0
-    set max-inventory random-normal 6000 500
+    ;set max-inventory random-normal 6000 500
+
+    set max-inventory random-normal 4000 500
+
+    if max-inventory < stock [
+      print "Warning, the stock is greater than the max-inventory limit"
+      while [max-inventory < stock] [
+        set stock random-normal 1000 100
+      ]
+    ]
+
+
     set waiting-list []
     set shoppers-list []
     set parking-list []
     set max-occupancy random-normal 10 5
     set ordered? false
     set num-consumers 0
-    ifelse random 1 < parking-space-prob
+
+    ifelse random-float 1 < parking-space-prob
     [set has-parking-space? true]
     [set has-parking-space? false]
 
@@ -239,6 +260,13 @@ to go-distributors
   ]
 end
 
+to-report stock-depleted?
+  report stock < 0.4 * max-inventory
+end
+
+to-report required-stock
+  report 0.9 * max-inventory - stock
+end
 
 to go-retailers
   ask retailers [
@@ -315,6 +343,51 @@ to go-trucks
   ]
 end
 
+to-report is-highway?
+  ifelse any? neighbors with [pcolor = 109][
+    report true
+  ][
+    report false
+  ]
+end
+
+to assign-target-store [available-store]
+  let min-distance-highway-store 1000000
+  let min-distance-city-store 1000000
+  let target-highway-store "none"
+  let target-city-store "none"
+
+
+  ask available-store [
+    let store-distance distance myself
+    if store-distance < min-distance-highway-store and is-highway?[
+      set min-distance-highway-store store-distance
+      set target-highway-store self
+    ]
+
+    if store-distance < min-distance-city-store and not is-highway?[
+      set min-distance-city-store store-distance
+      set target-city-store self
+    ]
+  ]
+
+  ifelse min-distance-highway-store < min-distance-city-store [
+    set go-to-store target-highway-store
+  ]
+
+  [
+    ifelse min-distance-highway-store - min-distance-city-store <= choose-city-road-threshold [
+      set go-to-store target-highway-store
+    ]
+    [
+      set go-to-store target-city-store
+    ]
+  ]
+
+end
+
+
+
 to enter-store
     set xcor [xcor] of go-to-store
     set ycor [ycor] of go-to-store
@@ -337,10 +410,7 @@ to wait-in-parking-lot
   ask go-to-store [
 
     if not member? current parking-list [
-      ;show "putting in parking list"
       set parking-list lput current parking-list
-      ;show parking-list
-      ;show "put"
     ]
 
   ]
@@ -352,7 +422,8 @@ to go-to-another-store
   let available-store retailers in-radius 100
     let remove-store go-to-store
     set available-store available-store with [ self != remove-store ]
-    set go-to-store one-of available-store
+    ;set go-to-store one-of available-store
+    assign-target-store available-store
     set goal go-to-store
 end
 
@@ -1143,6 +1214,21 @@ parking-space-prob
 NIL
 HORIZONTAL
 
+SLIDER
+690
+525
+887
+558
+choose-city-road-threshold
+choose-city-road-threshold
+0
+50
+20.0
+1
+1
+NIL
+HORIZONTAL
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -1542,6 +1628,15 @@ NetLogo 6.1.1
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="100000"/>
+    <metric>my-total-profit</metric>
+    <enumeratedValueSet variable="has-parking?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="hyp" repetitions="5" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
     <metric>my-total-profit</metric>
     <enumeratedValueSet variable="has-parking?">
       <value value="true"/>
