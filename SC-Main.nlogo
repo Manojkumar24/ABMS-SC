@@ -165,7 +165,7 @@ to setup-retailers
     set waiting-list []
     set shoppers-list []
     set parking-list []
-    set max-occupancy random-normal 10 5
+    set max-occupancy random-normal 25 5
     set ordered? false
     set num-consumers 0
 
@@ -270,10 +270,10 @@ end
 
 to go-retailers
   ask retailers [
-    if not ordered? and stock < 100 [                          ;; order when stock is below a threshold
+    if not ordered? and stock-depleted [                          ;; order when stock is below a threshold
       let my-distributor one-of distributors in-radius 100
       let store-value self
-      let stock-ordered 700
+      let stock-ordered required-stock
       hatch-trucks 1 [
         set xcor [pxcor] of my-distributor
         set ycor [pycor] of my-distributor
