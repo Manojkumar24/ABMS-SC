@@ -470,7 +470,8 @@ to spawn-consumer[house-xcor house-ycor]
       record-data
       set roaming-time 0
       set my-home one-of houses with [xcor = house-xcor and ycor = house-ycor]
-      set go-to-store one-of retailers in-radius 100
+      let available-store retailers in-radius 100
+      assign-target-store available-store
       set goal go-to-store
       set-speed
       set parking-wait-time 0
@@ -1261,7 +1262,7 @@ parking-space-prob
 parking-space-prob
 0
 1
-0.2
+0.0
 0.1
 1
 NIL
@@ -1741,7 +1742,7 @@ NetLogo 6.1.1
       <value value="45"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="test_road_1_1" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="city_threshold" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <metric>get-profit</metric>
@@ -1782,7 +1783,7 @@ NetLogo 6.1.1
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="hyp" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="parking" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <metric>get-profit</metric>
