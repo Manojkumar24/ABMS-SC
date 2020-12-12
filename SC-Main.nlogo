@@ -14,6 +14,7 @@ globals
   roads              ;; agentset containing the patches that are roads
   store-profit
   total-store-profit
+  draw-what?
 ]
 
 retailers-own [
@@ -79,10 +80,11 @@ houses-own [
 
 to-report get-profit
   ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
+    print store-profit
     report store-profit
   ]
   [
-    report 0
+    report 2048
   ]
 end
 
@@ -144,28 +146,31 @@ to setup-intersections
   ]
 end
 
-
-to setup-retailers
-  ask retailers[
-    set stock random-normal 1000 100
-    set purchased-stock stock
-    set sold-stock 0
-    ;set max-inventory random-normal 6000 500
-
-    set max-inventory random-normal 4000 500
-
+to test-inventory
     if max-inventory < stock [
       print "Warning, the stock is greater than the max-inventory limit"
       while [max-inventory < stock] [
         set stock random-normal 1000 100
       ]
     ]
+  set max-inventory int max-inventory
+end
 
+to setup-retailers
+  ask retailers[
+    set stock random-normal 1000 100
+    set stock int stock
+    set purchased-stock stock
+    set sold-stock 0
+    ;set max-inventory random-normal 6000 500
 
+    set max-inventory random-normal 4000 500
+    set max-inventory int max-inventory
     set waiting-list []
     set shoppers-list []
     set parking-list []
     set max-occupancy random-normal 25 5
+    set max-occupancy int max-occupancy
     set ordered? false
     set num-consumers 0
 
@@ -223,7 +228,7 @@ to go
 
   label-subject         ;; if we're watching a car, have it display its goal
   ;if ticks = 105000 [stop]
-  if num-days-completed = 30 [stop]
+  if num-days-completed = 365 [stop]
   tick
 end
 
@@ -260,12 +265,12 @@ to go-distributors
   ]
 end
 
-to-report stock-depleted?
+to-report stock-depleted
   report stock < 0.4 * max-inventory
 end
 
 to-report required-stock
-  report 0.9 * max-inventory - stock
+  report abs (int 0.9 * max-inventory - stock)
 end
 
 to go-retailers
@@ -290,6 +295,7 @@ to go-retailers
     ]
     if length shoppers-list > 0 [shopping]
     if length waiting-list > 0 [get-car-on-road]
+    test-inventory
   ]
 end
 
@@ -455,6 +461,7 @@ to spawn-consumer[house-xcor house-ycor]
       set xcor [pxcor] of place-at
       set ycor [pycor] of place-at
       set stock-needed random-normal 5 2
+      set stock-needed int stock-needed
       set at-store? false
       set prev-patch nobody
       set temp-prev-patch nobody
@@ -565,11 +572,27 @@ to get-car-on-road
   ]
 end
 
+to test-speed
+  if speed < 0
+  [
+    print "Warning, the speed is less than 0"
+    set speed 0
+  ]
+  if pcolor = white and speed > city-speed-limit [
+    print "Speed Limit Exceeded!"
+    set speed city-speed-limit
+  ]
+    if pcolor = 109 and speed > highway-speed-limit [
+    print "Speed Limit Exceeded!"
+    set speed highway-speed-limit
+  ]
+end
 
 to travel
   face next-patch ;; car heads towards its goal
   set-speed
   set temp-prev-patch patch-here
+  test-speed
   fd speed
   if patch-here != temp-prev-patch [ set prev-patch temp-prev-patch ]
   record-data
@@ -688,6 +711,8 @@ to plot-profits
   if ticks != 0 and ticks mod 720 = 0 [
     ifelse is-day
     [
+      let p get-profit
+
       set is-day false
       ask retailers [
         set parking-list []
@@ -784,6 +809,34 @@ to import-layout
   set filename (word filename ".csv")
   clear-all
   import-world filename
+end
+
+to behaviour-space-layout
+  let filename "grid4_choose_road_comparsion.csv"
+  clear-all
+  import-world filename
+end
+
+to check-retailer-int-stock
+  if stock != int stock[
+    print "Warning, Stock is a float value"
+  ]
+
+  if max-inventory != int max-inventory[
+    print "Warning, max-inventory is a float value"
+  ]
+
+  if max-occupancy != int max-occupancy [
+    print "Warning, max-occupancy is a float value"
+  ]
+
+end
+
+to check-consumer-int-stock
+  if stock-needed != int stock-needed[
+    print "Warning, stock-needed is a float value"
+  ]
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1169,30 +1222,30 @@ SWITCH
 203
 has-parking?
 has-parking?
-1
+0
 1
 -1000
 
 SLIDER
-260
-600
-432
-633
+410
+155
+443
+301
 max-parking-wait-time
 max-parking-wait-time
 0
 30
-23.0
+20.0
 1
 1
 NIL
-HORIZONTAL
+VERTICAL
 
 MONITOR
-580
-565
-682
-610
+625
+290
+727
+335
 NIL
 total-store-profit
 17
@@ -1215,15 +1268,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-690
-525
-887
-558
+465
+125
+662
+158
 choose-city-road-threshold
 choose-city-road-threshold
 0
 50
-20.0
+25.0
 1
 1
 NIL
@@ -1232,9 +1285,9 @@ HORIZONTAL
 @#$#@#$#@
 ## WHAT IS IT?
 
-Profit maximization of a retailer in a Supply Chain Network simulates how the profit of a retailer changes over time by keeping into account the following factors
+Profit maximization in a Supply Chain Network simulates how the profit for a retailer changes over time and helps in finding an optimal location to start the business where his profits get maximised by keeping into account the following factors
 1. Shopping behaviour of consumers
-2. Moving in traffic across a city layout (can be designed using another model named "Supply chain - layout")
+2. Navigation in a road netwrok across a city layout (can be designed using another model named "Supply chain - layout")
 
 This model simulates the day-night movement of consumers, by giving the goals, namely driving to-and-from a store. The agents in this model use goal-based cognition.
 
@@ -1244,21 +1297,19 @@ The model simulates day-night simulation of a supply chain network, to capture t
 
 All the consumers try to shop at day time. During the remaining half of day, i.e. at night-time, remaining consumers head back to thier houses and only trucks move around to deliver products (if any) from distributors to retailers. This repeats for every 1440 minutes(time steps) to simulate days, weeks, and so on. 
 
-During the day-time, consumers spawn at randomly across houses. They start moving towards their destination. At each time step, the cars(consumers) take their next step towards the goal they are trying to get to (store or house) and attempt to move forward at their current speed. If their current speed is less than the speed limit and there is no car directly in front of them, they accelerate. If there is a slower car in front of them, they match the speed of the slower car and decelerate. If there is a stationary car in front of them, they stop.
+During the day-time, consumers spawn randomly (using normal distribution) across houses. They start moving towards their nearest store. At each time step, the cars(consumers) take their next step towards the goal they are trying to get to (store or house) and attempt to move forward at their current speed. If their current speed is less than the speed limit and there is no car directly in front of them, they accelerate. If there is a slower car in front of them, they match the speed of the slower car and decelerate. If there is a stationary car in front of them, they stop.
+
+The road network consists of two kinds of roads - highway and city roads. Consumers prefer to travel on highway roads rather than city roads,  
 
 Each consumer has a house patch and a store patch. The cars will alternatively drive from house to store, store to house or to another store (if their stock requirement isn't met).
 
-The retailers place an order from a distributor when their stocks reduce below a threshold and the delivery happens only at night.
+The consumers after reaching any store, they enter the store if it's not completly occupied or else wait outside in the parking space, if available, for some time until they get the chance to enter the store. If they ran out of patience waiting outside the store, they move away to another store. If they enter the store, they purchase the required stock when it's their turn (assuming, first in first out). Next they wait, if needed, to get out of the store and reach their home.  
+
+The retailers place an order from a distributor when their stock reduces below a threshold and the delivery happens only at night.
 
 ## HOW TO USE IT
 
 Import the city layout desgined using the "Supply chain - layout" model. (You can always change any existing layouts by importing it using the model). 
-
-Press the SETUP button.
-
-At this time, you may configure the slider values like ticks-per-cycle, spawn-prob, speed-limit and wholesale price cost of product. See below for details.
-
-Start the simulation by pressing the GO button. You may continue to make changes to any slider values while the simulation is running.
 
 ### Buttons
 
@@ -1282,30 +1333,96 @@ SPAWN-PROB -- the probability of spawning a consumer in every cycle from every h
 
 WHOLESALE COST -- the price with which the retailer buys products from the distributor. (The selling price is set to 1 per product)
 
+PARKING-SPACE-PROB -- probability with which a store gets a parking space when initialised
+
+PARKING-WAIT-TIME -- the maximum time a consumer waits in a parking space before entering a store for shopping.
+
+CITY-ROAD-THRESHOLD -- the maximum distance between 2 stores, where one is farthest and beside highway and the other is near but beside a city road. by which the consumer decides to go for store on highway. 
+
+"My Store Setup" section of sliders enable the user to customise his own version of store and then start the simulation.
+
+### Switch
+
+HAS-PARKING -- whether the retail stores have parking or not. It helps in reducing congestion on road just outside the store patch, by making consumers to wait in parking space before entering the store for shopping.
+
+### Monitors
+
+DAY -- shows how many days have passed
+
+Consumers -- shows the count of consumers visited the user's store on a any day
 
 ### Plots
 
-STOPPED CARS -- displays the number of stopped cars over time.
-
 AVERAGE SPEED OF CARS -- displays the average speed of cars over time.
 
-AVERAGE WAIT TIME OF CARS -- displays the average time for which cars are stopped.
+NUMBER OF CONSUMERS -- displays the bar graph of number of consumers shopping at user's store each day for a week
 
 MY-STORE-PROFIT -- displays the profit for the user's store over time.
 
 
 ## THINGS TO NOTICE
 
+Different layouts result in different results of profits. Also, changing the location of user's store in a same layout changes the trend of profit increase over time.
+
+The roads with dense number of houses nearby, results in greater chances of congestion. The consumer(vehicle) stuck in congestion waits until the congestion gets cleared. The stores with larger occupancies and also having parking spaces in dense consumer regions, shows increase in demand and large profits over time. More number of consumers try to shop at the weekends. 
+
 ## THINGS TO TRY
+
+Change the location of user's retail store to different locations within same layout - near a dense residencial zone or/and beside highway road, far away from residencial zones or/and beside a city road, near/ far away from a distributor, changing parameter values while initilisation, say, increasing the actual cost price from distributors and check how it effects the growth in profit.
+  
+Try to simulate different layouts and locations of retail store and look out for parameters or behaviors which actually influenced the profit growth in the simulation. 
+
+## HYPOTHESIS TESTING
+
+### Nash Equilibrium
+
+Nash Equilibrium Dense Layout
+
+![Netlogo](file:images/nash_equilibrium_dense_layout.jpg)
+
+Nash Equilibrium Distributed Layout
+
+![Netlogo](file:images/nash_equil_distributed_layout.jpg)
+
+p value: 0.00034198072920571857 (Significant)
+
+
+### Parking Lot feature
+
+![Netlogo](file:images/Parking_space_tests.jpg)
+
+p value: 0.003622545449746039 (Significant)
+
+
+### Dense vs Sparsely Populated region
+
+Densely Populated Region
+
+![Netlogo](file:images/densely_populated.jpg)
+
+Sparsely Populated Region
+
+![Netlogo](file:images/sparsely_populated.jpg)
+
+p value: 0.4122919160617403 (Insignificant)
+
+
 
 ## EXTENDING THE MODEL
 
+Having patience factor for consumers who are stuck at congestion, they can move away to another retail store nearby taking an alternate route. Including another state variable "reputation" to retail stores attracts more consumers, by making them to visit reputed store even if it's far away from their homes. Having a complex road network with more than 2 kinds of road types with variety of lanes. 
+
 ## RELATED MODELS
 
-- "Supply chain layout" : model to design, import/export the city layout to simulate using this model.
+- "Supply chain - Layout" : model to design, import/export the city layout to simulate using this model.
 
+## REFERENCES
 
-## HOW TO CITE
+[Stock related data](https://www.rootcausecoalition.org/wp-content/uploads/2016/06/Food-Acquisition-and-Purchase-Survey.pdf)
+
+[Speed and transport related data](https://www.ibtta.org/sites/default/files/Speed%20Limit%20and%20factors%20safety.pdf)
+
+[Nash Equilibrium](https://www.youtube.com/watch?v=jILgxeNBK_8&ab_channel=TED-Ed)
 @#$#@#$#@
 default
 true
@@ -1624,23 +1741,86 @@ NetLogo 6.1.1
       <value value="45"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="parking-space" repetitions="5" runMetricsEveryStep="true">
+  <experiment name="test_road_1_1" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="100000"/>
-    <metric>my-total-profit</metric>
+    <metric>get-profit</metric>
+    <enumeratedValueSet variable="parking-space-prob">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-parking-wait-time">
+      <value value="23"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="spawn-prob">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="store-max-occupancy">
+      <value value="9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="city-speed-limit">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="wholesale-cost">
+      <value value="0.65"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="avg-people-shopping">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="highway-speed-limit">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-stock">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ticks-per-cycle">
+      <value value="45"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="choose-city-road-threshold">
+      <value value="50"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="has-parking?">
-      <value value="true"/>
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="hyp" repetitions="5" runMetricsEveryStep="true">
+  <experiment name="hyp" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <metric>my-total-profit</metric>
+    <metric>get-profit</metric>
+    <enumeratedValueSet variable="parking-space-prob">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-parking-wait-time">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="spawn-prob">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="store-max-occupancy">
+      <value value="9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="city-speed-limit">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="wholesale-cost">
+      <value value="0.65"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="avg-people-shopping">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="highway-speed-limit">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-stock">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ticks-per-cycle">
+      <value value="45"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="choose-city-road-threshold">
+      <value value="25"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="has-parking?">
       <value value="true"/>
-      <value value="false"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
