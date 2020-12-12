@@ -80,7 +80,6 @@ houses-own [
 
 to-report get-profit
   ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
-    print store-profit
     report store-profit
   ]
   [
@@ -943,7 +942,7 @@ ticks-per-cycle
 ticks-per-cycle
 1
 100
-45.0
+49.0
 1
 1
 NIL
@@ -1087,7 +1086,7 @@ wholesale-cost
 wholesale-cost
 0
 1
-0.65
+0.7
 0.01
 1
 NIL
@@ -1236,22 +1235,11 @@ max-parking-wait-time
 max-parking-wait-time
 0
 30
-20.0
+22.0
 1
 1
 NIL
 VERTICAL
-
-MONITOR
-625
-290
-727
-335
-NIL
-total-store-profit
-17
-1
-11
 
 SLIDER
 470
