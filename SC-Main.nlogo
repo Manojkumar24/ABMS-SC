@@ -80,7 +80,6 @@ houses-own [
 
 to-report get-profit
   ifelse ticks != 0 and ticks mod 720 = 0 and is-day [
-    print store-profit
     report store-profit
   ]
   [
@@ -470,7 +469,8 @@ to spawn-consumer[house-xcor house-ycor]
       record-data
       set roaming-time 0
       set my-home one-of houses with [xcor = house-xcor and ycor = house-ycor]
-      set go-to-store one-of retailers in-radius 100
+      let available-store retailers in-radius 100
+      assign-target-store available-store
       set goal go-to-store
       set-speed
       set parking-wait-time 0
@@ -942,7 +942,7 @@ ticks-per-cycle
 ticks-per-cycle
 1
 100
-45.0
+49.0
 1
 1
 NIL
@@ -1086,7 +1086,7 @@ wholesale-cost
 wholesale-cost
 0
 1
-0.65
+0.7
 0.01
 1
 NIL
@@ -1235,22 +1235,11 @@ max-parking-wait-time
 max-parking-wait-time
 0
 30
-20.0
+22.0
 1
 1
 NIL
 VERTICAL
-
-MONITOR
-625
-290
-727
-335
-NIL
-total-store-profit
-17
-1
-11
 
 SLIDER
 470
@@ -1261,7 +1250,7 @@ parking-space-prob
 parking-space-prob
 0
 1
-0.2
+0.0
 0.1
 1
 NIL
@@ -1378,18 +1367,18 @@ Try to simulate different layouts and locations of retail store and look out for
 
 Nash Equilibrium Dense Layout
 
-![Netlogo](file:images/nash_equilibrium_dense_layout.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/nash_equilibrium_dense_layout.jpg)
 
 Nash Equilibrium Distributed Layout
 
-![Netlogo](file:images/nash_equil_distributed_layout.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/nash_equil_distributed_layout.jpg)
 
 p value: 0.00034198072920571857 (Significant)
 
 
 ### Parking Lot feature
 
-![Netlogo](file:images/Parking_space_tests.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/Parking_space_tests.jpg)
 
 p value: 0.003622545449746039 (Significant)
 
@@ -1398,11 +1387,11 @@ p value: 0.003622545449746039 (Significant)
 
 Densely Populated Region
 
-![Netlogo](file:images/densely_populated.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/densely_populated.jpg)
 
 Sparsely Populated Region
 
-![Netlogo](file:images/sparsely_populated.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/sparsely_populated.jpg)
 
 p value: 0.4122919160617403 (Insignificant)
 
@@ -1741,7 +1730,7 @@ NetLogo 6.1.1
       <value value="45"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="test_road_1_1" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="city_threshold" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <metric>get-profit</metric>
@@ -1782,7 +1771,7 @@ NetLogo 6.1.1
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="hyp" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="parking" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <metric>get-profit</metric>
