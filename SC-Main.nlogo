@@ -1367,18 +1367,18 @@ Try to simulate different layouts and locations of retail store and look out for
 
 Nash Equilibrium Dense Layout
 
-![Netlogo](file:images/nash_equilibrium_dense_layout.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/nash_equilibrium_dense_layout.jpg)
 
 Nash Equilibrium Distributed Layout
 
-![Netlogo](file:images/nash_equil_distributed_layout.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/nash_equil_distributed_layout.jpg)
 
 p value: 0.00034198072920571857 (Significant)
 
 
 ### Parking Lot feature
 
-![Netlogo](file:images/Parking_space_tests.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/Parking_space_tests.jpg)
 
 p value: 0.003622545449746039 (Significant)
 
@@ -1387,11 +1387,11 @@ p value: 0.003622545449746039 (Significant)
 
 Densely Populated Region
 
-![Netlogo](file:images/densely_populated.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/densely_populated.jpg)
 
 Sparsely Populated Region
 
-![Netlogo](file:images/sparsely_populated.jpg)
+![Netlogo](https://raw.githubusercontent.com/jiteshm17/ABMS-SC/jitesh/images/sparsely_populated.jpg)
 
 p value: 0.4122919160617403 (Insignificant)
 
